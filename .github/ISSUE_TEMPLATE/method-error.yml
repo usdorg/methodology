@@ -1,0 +1,21 @@
+name: Error in the method
+description: Something in the text is wrong, unclear or out of date.
+labels: [error]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: File and section
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: Link to the record, law or document that shows the correct version.

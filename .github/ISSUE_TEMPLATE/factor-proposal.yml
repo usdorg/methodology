@@ -1,0 +1,34 @@
+name: Factor or source
+description: Propose a new factor, a public source, or a change to how a factor is measured.
+labels: [proposal]
+body:
+  - type: input
+    id: factor
+    attributes:
+      label: Factor
+      description: Existing factor id (L1 to L12) or "new".
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should change
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters to a customer
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Public source, law, study or data that anyone can check. Include links.
+    validations:
+      required: true
+  - type: input
+    id: scope
+    attributes:
+      label: States or trades it applies to
