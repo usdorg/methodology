@@ -6,14 +6,17 @@ The method is published here before the first ranking, so anyone can read it, qu
 
 ## Status
 
-Version 0.1 (October 2026). This release contains the principles and the list of factors. Weights, formulas and the machine-readable factor file come with version 3.0, before any score is shown on the site. See [CHANGELOG.md](CHANGELOG.md).
+Version 3.0 (October 2026): principles, the 12 factors with their weights, how a result, confidence and tier add up, the public sources, and the machine-readable factor file. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Contents
 
 | File | What it covers |
 |---|---|
 | [docs/principles.md](docs/principles.md) | The five parts of an open rating we commit to, and what stays private |
-| [docs/factors.md](docs/factors.md) | The 12 factors: what we measure, sources, why it matters, how to improve |
+| [docs/factors.md](docs/factors.md) | The 12 factors and their weights: what we measure, sources, why it matters, how to improve |
+| [docs/calculation.md](docs/calculation.md) | How a score adds up: factor values, the weighted result, confidence and tiers, with a worked example |
+| [docs/sources.md](docs/sources.md) | The public records and other sources we use |
+| [levers.yaml](levers.yaml) | The whole method in machine-readable form: weights, functions, tiers, factors |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in the method and why |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to propose a factor, a source or a correction to the method |
 

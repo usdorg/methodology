@@ -1,0 +1,818 @@
+title: 'US Directory Methodology: factors, weights and formulas'
+version: '3.0'
+date: '2026-10-12'
+license: CC BY 4.0
+phase: 1
+groups:
+  trade:
+    niches:
+    - plumbing
+    - drain_cleaning
+    - water_heater
+    - hvac
+    weights:
+      L1: 20
+      L2: 10
+      L3: 12
+      L4: 12
+      L5: 6
+      L6: 0
+      L7: 9
+      L8: 5
+      L9: 8
+      L10: 6
+      L11: 6
+      L12: 6
+  in_home:
+    niches:
+    - house_cleaning
+    - maid
+    - move_out
+    weights:
+      L1: 10
+      L2: 18
+      L3: 10
+      L4: 14
+      L5: 4
+      L6: 0
+      L7: 14
+      L8: 9
+      L9: 9
+      L10: 6
+      L11: 6
+      L12: 0
+  technical:
+    niches:
+    - carpet_upholstery
+    - air_duct_dryer_vent
+    - tile
+    - chimney
+    weights:
+      L1: 8
+      L2: 10
+      L3: 12
+      L4: 13
+      L5: 18
+      L6: 0
+      L7: 12
+      L8: 7
+      L9: 8
+      L10: 6
+      L11: 6
+      L12: 0
+  exterior:
+    niches:
+    - pressure_washing
+    - gutter
+    - window
+    - roofing
+    - solar
+    weights:
+      L1: 8
+      L2: 18
+      L3: 12
+      L4: 15
+      L5: 5
+      L6: 0
+      L7: 12
+      L8: 8
+      L9: 8
+      L10: 8
+      L11: 6
+      L12: 0
+aggregation:
+  prior:
+    percentile: 0.4
+    cap: 0.5
+  confidence:
+    base: 0.7
+    families_bonus: 0.3
+    families_full: 4
+  listed_if:
+    min_ok_levers: 5
+    min_confidence: 0.4
+  top_eligible:
+    min_confidence: 0.6
+    min_clean_record: 0.6
+    claims_match: 1.0
+    registry_levers:
+    - L1
+    - L3
+    - L4
+    - L12
+    min_registry_levers_ok: 3
+  discrimination:
+    shown: 12
+    min_iqr: 8
+    close_gap: 1
+    max_close_share: 0.3
+    max_top3_interval: 3
+    max_p80_rank: 10
+    top_n: 10
+    bootstrap: 500
+    dirichlet_concentration: 30
+functions:
+  log_cap:
+    formula: min(1, ln(1 + x) / ln(1 + cap))
+    meaning: 'Diminishing returns: each extra unit adds less, and the value reaches 1 at x = cap.'
+  penalty:
+    formula: exp(-sum(severity * exp(-age_years / tau)) / scale)
+    scale: 50.0
+    tau: 3.0
+    max_age_years: 7.0
+    age_if_unknown: 1.0
+    meaning: No events gives 1. Each event lowers the value by its severity (0 to 100) and fades with age; events older than
+      max_age_years are not counted.
+  wilson_lb:
+    formula: lower bound of the Wilson score interval for k successes out of n
+    z: 1.64
+    n_min: 10
+    meaning: A share that cannot be inflated by a few answers; below n_min it is not scored.
+  rel:
+    formula: with the feature 0.5 + 0.5 * (1 - p), without it 0.5 - 0.5 * p
+    meaning: A feature counts more when it is rare in the trade (p = share of companies that have it).
+  warranty:
+    formula: 0.95 * log_cap(months, 24); lifetime with stated conditions 1.0, without conditions 0.95; no stated length counts
+      as 1 month; parts only x 0.5
+    meaning: Value of a written workmanship warranty.
+  tier:
+    formula: value from the table
+    meaning: Fixed steps, for example license class.
+  value:
+    formula: the input as is (0 to 1)
+    meaning: Yes or no, or strength of evidence.
+  dev:
+    formula: 'price / city median: 0.7 to 1.3 gives 1, above 1.3 falls to 0 at 2.2, 0.5 to 0.7 rises from 0.75 to 1, below
+      0.5 gives 0.5'
+    meaning: Fairness of a price against the city median.
+evidence:
+- level: Public record
+  example: License found in the state register
+  strength: 1.0
+- level: Document on the website
+  example: Certificate of insurance published as a file
+  strength: 0.8
+- level: Specific claim on the website
+  example: Insured for $1,000,000 with a named insurer
+  strength: 0.6
+- level: Vague claim on the website
+  example: Fully insured
+  strength: 0.35
+- level: Nothing found
+  example: 'Not scored: the factor''s weight moves to the others'
+  strength: null
+sources:
+  fl-dbpr-licensees:
+    name: Construction Industry Licensing Board licensee file
+    publisher: Florida Department of Business and Professional Regulation (DBPR)
+    url: https://www.myfloridalicense.com/
+    checked: daily
+    used_for:
+    - L1
+    - L4
+    - L11
+  fl-cilb-discipline:
+    name: Construction Industry Licensing Board discipline records
+    publisher: Florida DBPR
+    url: https://www.myfloridalicense.com/
+    checked: daily (the file changes every few months)
+    used_for:
+    - L3
+  fl-recovery-fund-claims:
+    name: Florida Homeowners' Construction Recovery Fund claims
+    publisher: Florida DBPR
+    url: https://www.myfloridalicense.com/
+    checked: public records request
+    used_for:
+    - L3
+  fl-dfs-stop-work-orders:
+    name: Workers' compensation stop-work orders
+    publisher: Florida Department of Financial Services, Division of Workers' Compensation
+    url: https://www.myfloridacfo.com/division/wc/
+    checked: weekly
+    used_for:
+    - L3
+  fl-sunbiz-corporations:
+    name: Corporation records, annual reports and events
+    publisher: Florida Department of State, Division of Corporations (Sunbiz)
+    url: https://dos.fl.gov/sunbiz/
+    checked: daily
+    used_for:
+    - L3
+    - L4
+    - L11
+  fl-dbpr-applications:
+    name: Construction license applications
+    publisher: Florida DBPR
+    url: https://www.myfloridalicense.com/
+    checked: daily
+    used_for:
+    - L1
+  fl-sunbiz-trade-names:
+    name: Fictitious name (trade name) records
+    publisher: Florida Department of State, Division of Corporations (Sunbiz)
+    url: https://dos.fl.gov/sunbiz/
+    checked: daily
+    used_for:
+    - L1
+  internet-archive:
+    name: Wayback Machine
+    publisher: Internet Archive
+    url: https://web.archive.org/
+    checked: on each crawl
+    used_for:
+    - L4
+  fl-permits-tampa:
+    name: Building permits, City of Tampa
+    publisher: City of Tampa (Accela Citizen Access)
+    url: https://aca-prod.accela.com/TAMPA/
+    checked: monthly
+    used_for:
+    - L12
+  fl-permits-hillsborough:
+    name: Building permits, Hillsborough County
+    publisher: Hillsborough County (Accela Citizen Access)
+    url: https://aca-prod.accela.com/HCFL/
+    checked: monthly
+    used_for:
+    - L12
+  fl-permits-pinellas:
+    name: Building permits, Pinellas County
+    publisher: Pinellas County (Accela Citizen Access)
+    url: https://aca-prod.accela.com/PINELLAS/
+    checked: monthly
+    used_for:
+    - L12
+  fl-permits-pasco:
+    name: Building permits, Pasco County
+    publisher: Pasco County (Accela Citizen Access)
+    url: https://aca-prod.accela.com/PASCO/
+    checked: monthly
+    used_for:
+    - L12
+  company-websites:
+    name: Company websites
+    publisher: Each business
+    url: null
+    checked: on each crawl
+    used_for:
+    - L2
+    - L5
+    - L7
+    - L8
+    - L9
+    - L10
+    - L11
+  ca-cslb-licensees:
+    name: Contractors State License Board license master file
+    publisher: California CSLB
+    url: https://www.cslb.ca.gov/
+    checked: not used yet
+    used_for:
+    - L1
+    - L2
+detection: Separately from the 12 factors, we look for signs that data is not genuine, such as lead generation fronts posing
+  as local companies or addresses that are mailbox services. No single sign proves anything; we act only when several agree.
+  We describe these checks by principle only. The exact thresholds stay private so they cannot be gamed.
+factors:
+- id: L1
+  name: State license
+  role: trust
+  measures: Whether the business holds an active state license for the trade, and which class.
+  where_from: Florida Department of Business and Professional Regulation (DBPR), Construction Industry Licensing Board licensee
+    file.
+  why_it_matters: A license means the contractor met state requirements and can be held to account by the licensing board.
+  how_we_count: 'An active license counts 1, an inactive one 0. The class is multiplied in: a certified plumbing contractor
+    license (CFC, valid in the whole state) counts 1.0, a registered license (RF, valid only where the local exam was passed)
+    counts 0.7. If we cannot match the business to any license, the factor is not scored and the business gets no page in
+    the directory.'
+  how_to_improve: Show your full state license number on the website so it can be matched to the state record.
+  note: How sure we are that a license belongs to this business (license number on the website and name, name only, trade
+    name owner, or phone of a license applicant) affects our confidence, not the business's result. A weak match on our side
+    is not the company's fault.
+  if_no_data: not scored, weight moves to other factors
+  combine: product
+  components:
+  - id: active
+    fn: tier
+    args:
+      table:
+        current: 1.0
+        inactive: 0.0
+  - id: class_level
+    fn: tier
+    args:
+      table:
+        CFC: 1.0
+        RF: 0.7
+  match_quality:
+    number_and_name: 1.0
+    name_only: 0.8
+    dba_owner: 0.7
+    applicant_phone: 0.7
+  evidence_strength: match quality (see match_quality of L1)
+  source_ids:
+    FL:
+    - fl-dbpr-licensees
+    CA:
+    - ca-cslb-licensees
+  examples:
+  - in:
+      active: current
+      class_level: CFC
+    out: 1.0
+  - in:
+      active: current
+      class_level: RF
+    out: 0.7
+  - in:
+      active: inactive
+      class_level: CFC
+    out: 0.0
+- id: L2
+  name: Customer protection (insurance, bond, workers' comp)
+  role: score
+  measures: General liability insurance, bond, workers' compensation and background checks of staff.
+  where_from: The company website. Florida has no public register of contractor insurance, so in Florida this is shown as
+    claimed and does not count toward the result.
+  why_it_matters: If something goes wrong in your home, insurance and a bond decide who pays.
+  how_we_count: 'Weighted sum of four parts: insurance 45%, bond 20%, workers'' compensation 20%, background checks 15%. Each
+    part counts by the strength of its evidence: vague claim 0.35, specific claim 0.6, document on the website 0.8, public
+    record 1.0.'
+  how_to_improve: Publish your insurer, policy limits and a current certificate of insurance; list your bond and workers'
+    comp.
+  if_no_data: neutral value (see aggregation.prior)
+  combine: weighted_sum
+  components:
+  - id: insured
+    weight: 0.45
+    fn: value
+  - id: bonded
+    weight: 0.2
+    fn: value
+  - id: workers_comp
+    weight: 0.2
+    fn: value
+  - id: background_checked
+    weight: 0.15
+    fn: value
+  evidence:
+    vague_claim: 0.35
+    specific_claim: 0.6
+    document_on_site: 0.8
+    registry: 1.0
+  evidence_strength: 0.6
+  source_ids:
+    FL:
+    - company-websites
+    CA:
+    - ca-cslb-licensees
+  examples:
+  - in:
+      insured: 0.35
+      bonded: 0
+      workers_comp: 0
+      background_checked: 0
+    out: 0.1575
+  - in:
+      insured: 1.0
+      bonded: 1.0
+      workers_comp: 1.0
+      background_checked: 0.35
+    out: 0.9025
+- id: L3
+  name: Clean record
+  role: trust
+  measures: 'Events in public records: board citations and final orders, suspended or revoked licenses, unlicensed activity,
+    payouts from the recovery fund, workers'' comp stop-work orders, administrative dissolution and late annual reports.'
+  where_from: Construction Industry Licensing Board discipline records and Florida Homeowners' Construction Recovery Fund
+    claims; Florida Division of Workers' Compensation stop-work orders; Florida Division of Corporations (Sunbiz).
+  why_it_matters: Past problems with the board or the state are the clearest public warning a customer can get.
+  how_we_count: 'A record with no events counts 1. Each event has a severity from 0 to 100 (listed below) and fades with age:
+    its weight halves roughly every two years, and events older than 7 years are not counted. The factor equals exp(-sum of
+    faded severities / 50), so one fresh final order (severity 40) gives 0.45 and the same order three years later gives 0.75.
+    If we cannot match the business to records, the factor is not scored.'
+  how_to_improve: Resolve open complaints with the licensing board; keep annual reports and insurance current.
+  if_no_data: not scored, weight moves to other factors
+  combine: penalty
+  severity:
+  - event: cilb_citation
+    label: Licensing board citation
+    severity: 12
+  - event: cilb_final_order
+    label: Licensing board final order
+    severity: 40
+  - event: license_suspended_or_revoked
+    label: License suspended or revoked
+    severity: 70
+  - event: unlicensed_activity
+    label: Unlicensed activity
+    severity: 60
+  - event: recovery_fund_payout
+    label: Payout from the Homeowners' Construction Recovery Fund
+    severity: 50
+  - event: workers_comp_lapse
+    label: Workers' comp stop-work order or lapse in coverage
+    severity: 15
+  - event: sunbiz_admin_dissolution
+    label: Administrative dissolution of the business entity
+    severity: 15
+  - event: sunbiz_late_report
+    label: Late annual report
+    severity: 5
+  evidence_strength: match quality (see match_quality of L1)
+  source_ids:
+    FL:
+    - fl-cilb-discipline
+    - fl-recovery-fund-claims
+    - fl-dfs-stop-work-orders
+    - fl-sunbiz-corporations
+  examples:
+  - in:
+      events: []
+    out: 1.0
+  - in:
+      events:
+      - - 40
+        - 0
+    out: 0.4493
+  - in:
+      events:
+      - - 12
+        - 0
+    out: 0.7866
+  - in:
+      events:
+      - - 40
+        - 3
+    out: 0.7451
+  - in:
+      events:
+      - - 60
+        - 7.5
+    out: 1.0
+- id: L4
+  name: Years in business
+  role: score
+  measures: How long the business has operated, and how long its qualifying license holder has been licensed.
+  where_from: First license date in DBPR records, filing date in Sunbiz when the address matches, and first appearance of
+    the website in the Internet Archive.
+  why_it_matters: A firm that has worked for years has a history that can be checked.
+  how_we_count: 'Firm years are the median of the dates we can confirm. Years count with diminishing returns, log_cap(years,
+    25): 5 years give 0.55, 10 years 0.74, 25 years or more 1. The qualifier''s own years can only add: the factor is the
+    larger of the firm''s value and 75% firm plus 25% qualifier, so a new firm run by an experienced contractor is not treated
+    as a beginner.'
+  how_to_improve: Keep the business entity and license in good standing; years are counted from state records, not from the
+    website.
+  if_no_data: neutral value (see aggregation.prior)
+  combine: max_blend
+  components:
+  - id: firm
+    weight: 0.75
+    fn: log_cap
+    args:
+      cap: 25
+  - id: qualifier
+    weight: 0.25
+    fn: log_cap
+    args:
+      cap: 25
+  evidence_strength: match quality (see match_quality of L1)
+  source_ids:
+    FL:
+    - fl-dbpr-licensees
+    - fl-sunbiz-corporations
+    - internet-archive
+  examples:
+  - in:
+      firm: 1
+      qualifier: 20
+    out: 0.3932
+  - in:
+      firm: 10
+      qualifier: null
+    out: 0.736
+  - in:
+      firm: 30
+      qualifier: 2
+    out: 1.0
+- id: L5
+  name: Trade qualifications
+  role: score
+  measures: Certifications relevant to the trade, such as backflow and cross-connection certificates or manufacturer certifications
+    for water heaters.
+  where_from: The company website, checked in the issuer's public locator where one exists.
+  why_it_matters: Some jobs need training beyond the base license.
+  how_we_count: 'Each accepted personal certification counts 1, trade associations and manufacturer programs 0.25 each; the
+    total counts with diminishing returns, log_cap(total, 3): one certification gives 0.5, three or more give 1. A certification
+    we only see claimed on the website is capped at 0.6.'
+  how_to_improve: List certifications with the issuing body and number so they can be checked in the issuer's locator.
+  if_no_data: neutral value (see aggregation.prior)
+  combine: single
+  components:
+  - id: k
+    fn: log_cap
+    args:
+      cap: 3
+  claim_cap: 0.6
+  allowlist:
+    plumbing:
+    - ASSE 6010
+    - ASSE 5110
+    - Green Plumbers USA
+    hvac:
+    - NATE
+    - EPA 608 (claimed only)
+    water_heater:
+    - Navien
+    - Rinnai
+    - Bradford White
+  associations_weight: 0.25
+  evidence_strength: 0.6
+  examples:
+  - in:
+      k: 1
+    out: 0.5
+  - in:
+      k: 3
+    out: 1.0
+  - in:
+      k: 0.25
+    out: 0.161
+- id: L6
+  name: Customer experience (our own survey)
+  role: score
+  measures: Whether customers would hire the company again, from our own survey of verified customers.
+  where_from: Our own survey. Not active yet; until then this factor has no weight.
+  why_it_matters: Records show whether a company is legitimate. Only customers can say whether the work was good.
+  how_we_count: The lower bound of the 90% Wilson interval for the share of customers who would hire the company again, so
+    a few answers cannot outweigh many. With fewer than 10 answers the factor is not scored.
+  note: We do not copy ratings or reviews from other platforms.
+  if_no_data: not scored, weight moves to other factors
+  combine: single
+  components:
+  - id: hire_again
+    fn: wilson_lb
+    args:
+      n_min: 10
+  evidence_strength: 1.0
+  examples:
+  - in:
+      hire_again:
+      - 9
+      - 10
+    out: 0.6532
+  - in:
+      hire_again:
+      - 3
+      - 3
+    out: null
+- id: L7
+  name: Price transparency
+  role: score
+  measures: Prices published for common jobs, flat or upfront pricing, and whether the service call fee is disclosed.
+  where_from: The company website.
+  why_it_matters: Published prices let you compare before you call and reduce surprises on the invoice.
+  how_we_count: 'Weighted sum: number of published prices 50% (a price per job or per hour counts 1, a "starting at" price
+    0.5, with diminishing returns up to 5), upfront or flat pricing 20%, disclosed service call fee 15%, price compared with
+    the city median 15% (not active until services are normalized across companies; its weight moves to the other parts).'
+  how_to_improve: Publish prices for your common jobs (not only "from $X" or coupons) and your service call fee.
+  if_no_data: neutral value (see aggregation.prior)
+  combine: weighted_sum
+  components:
+  - id: n_prices
+    weight: 0.5
+    fn: log_cap
+    args:
+      cap: 5
+  - id: upfront
+    weight: 0.2
+    fn: value
+  - id: call_fee_disclosed
+    weight: 0.15
+    fn: value
+  - id: dev
+    weight: 0.15
+    fn: dev
+  evidence_strength: 0.8
+  examples:
+  - in:
+      n_prices: 8
+      upfront: 1
+      call_fee_disclosed: 1
+      dev: null
+    out: 1.0
+  - in:
+      n_prices: 1
+      upfront: 0
+      call_fee_disclosed: 0
+      dev: null
+    out: 0.2276
+- id: L8
+  name: Written guarantee
+  role: score
+  measures: A workmanship warranty with a stated length and coverage, and a satisfaction guarantee that says how it works.
+  where_from: The company website.
+  why_it_matters: A written guarantee tells you what happens if the repair fails.
+  how_we_count: 'Warranty 60%: 0.95 x log_cap(months, 24), so 12 months give 0.76 and 24 months or more give 0.95; a lifetime
+    warranty with stated conditions gives 1; a warranty on parts only counts half. Satisfaction guarantee 40%, counted only
+    when it says how it works (redo, refund). Because this is a claim on the website, the factor is capped at 0.6.'
+  how_to_improve: State your workmanship warranty in months, what it covers and how to claim it.
+  if_no_data: neutral value (see aggregation.prior)
+  combine: weighted_sum
+  components:
+  - id: warranty
+    weight: 0.6
+    fn: warranty
+  - id: satisfaction
+    weight: 0.4
+    fn: value
+  claim_cap: 0.6
+  evidence_strength: 0.6
+  examples:
+  - in:
+      warranty:
+        months: 12
+      satisfaction: 0
+    out: 0.4542
+  - in:
+      warranty:
+        lifetime: true
+        conditions: true
+      satisfaction: 1
+    out: 1.0
+  - in:
+      warranty:
+        months: 24
+        parts_only: true
+      satisfaction: 0
+    out: 0.285
+- id: L9
+  name: Availability
+  role: fit to the request
+  measures: Emergency service hours, same-day and weekend service, online booking.
+  where_from: The company website. Later, a measured response to a test call.
+  why_it_matters: For a burst pipe, who answers at night matters more than anything else.
+  how_we_count: 'Weighted sum: 24/7 emergency service 20% (rarer in the trade, so it counts more: with it 0.84, without it
+    0.34 for plumbers), same-day service 15%, weekend service 15%, online booking 20%, measured response to a test call 30%
+    (not active yet). Claims are capped at 0.6.'
+  how_to_improve: Say exactly when you answer emergency calls and offer online booking.
+  if_no_data: neutral value (see aggregation.prior)
+  combine: weighted_sum
+  components:
+  - id: emergency_24_7
+    weight: 0.2
+    fn: rel
+    args:
+      p: 0.32
+  - id: same_day
+    weight: 0.15
+    fn: value
+  - id: weekend
+    weight: 0.15
+    fn: value
+  - id: online_booking
+    weight: 0.2
+    fn: value
+  - id: measured_response
+    weight: 0.3
+    fn: value
+  claim_cap: 0.6
+  evidence_strength: 0.6
+  examples:
+  - in:
+      emergency_24_7: true
+      same_day: 1
+      weekend: 1
+      online_booking: 0
+      measured_response: null
+    out: 0.6686
+- id: L10
+  name: Services match
+  role: fit to the request
+  measures: Which services in the trade the company lists, and whether the trade is its main line of work.
+  where_from: The company website.
+  why_it_matters: A company that does your kind of job every day is more likely to do it well.
+  how_we_count: The number of listed services in the trade family counts with diminishing returns up to the 75th percentile
+    of companies in the same city and trade. It is multiplied by 1.0 when the trade is the company's main line of work and
+    0.7 otherwise.
+  how_to_improve: List each service you offer on its own page or line.
+  if_no_data: not scored, weight moves to other factors
+  combine: product
+  components:
+  - id: services
+    fn: log_cap
+    args:
+      cap: p75
+  - id: niche_fit
+    fn: tier
+    args:
+      table:
+        family: 1.0
+        other: 0.7
+  evidence_strength: 0.8
+  examples:
+  - in:
+      services:
+      - 14
+      - 30
+      niche_fit: family
+    out: 0.7886
+  - in:
+      services:
+      - 28
+      - 30
+      niche_fit: other
+    out: 0.6864
+- id: L11
+  name: Claims match records
+  role: trust
+  measures: Whether the founding year, license number and address on the website agree with state records.
+  where_from: The company website compared with DBPR and Sunbiz records.
+  why_it_matters: A website that states facts the records do not support is a reason to check more carefully.
+  how_we_count: 'Works like the clean record factor: no mismatch counts 1, and each unexplained mismatch lowers the value,
+    for example a founding year on the website well before any record of the business. A license number on the website that
+    is inactive or belongs to another business is flagged and keeps the listing from being Verified. The exact severities
+    stay private, as for other checks of fake data.'
+  how_to_improve: Make sure the founding year, license number and address on your website match state records.
+  if_no_data: not scored, weight moves to other factors
+  combine: penalty
+  evidence_strength: match quality (see match_quality of L1)
+- id: L12
+  name: Permitted work
+  role: score
+  measures: Building permits pulled by the company in the last 12 months, and the share closed with a final inspection.
+  where_from: 'City and county permit portals (in the Tampa Bay area: City of Tampa, Hillsborough, Pinellas and Pasco counties).'
+  why_it_matters: Permits closed with a final inspection show work that an inspector signed off on.
+  how_we_count: 'Weighted sum: permit volume 50%, with diminishing returns up to the 75th percentile of companies in the same
+    city and trade (so size alone cannot win), and the share of completed permits closed with a final inspection 50%, as the
+    lower bound of the 90% Wilson interval. A final inspection counts when the inspection record shows it approved or passed.
+    An expired permit counts as not closed; a completed permit with no inspection on record is left out of the share. With
+    fewer than 10 completed permits the share is not scored and its weight moves to volume. Without a match to permit records
+    the factor is not scored.'
+  how_to_improve: Pull permits for permitted work and close them with a final inspection.
+  if_no_data: not scored, weight moves to other factors
+  combine: weighted_sum
+  components:
+  - id: volume
+    weight: 0.5
+    fn: log_cap
+    args:
+      cap: p75
+  - id: closed
+    weight: 0.5
+    fn: wilson_lb
+    args:
+      n_min: 10
+  evidence_strength: 1.0
+  source_ids:
+    FL:
+    - fl-permits-tampa
+    - fl-permits-hillsborough
+    - fl-permits-pinellas
+    - fl-permits-pasco
+  examples:
+  - in:
+      volume:
+      - 30
+      - 30
+      closed:
+      - 28
+      - 30
+    out: 0.9089
+  - in:
+      volume:
+      - 6
+      - 30
+      closed:
+      - 3
+      - 4
+    out: 0.5667
+changelog:
+- version: '3.0'
+  date: '2026-10-13'
+  changes:
+  - Tiers are Verified and Listed. Verified means the business meets the trust conditions (confidence, an active matched license,
+    a clean record, website facts that agree with records, enough registry factors checked); every other business is Listed.
+    Top appears only in a city that passes the discrimination test.
+  - 'The result is not shown as a number in city lists: lists show the tier and are ordered by the result.'
+  - 'Permitted work: whether a completed permit was closed with a final inspection is now read from the inspection records
+    of each permit, as this method describes, instead of being inferred from the permit status. An expired permit counts as
+    not closed; a completed permit with no inspection on record is left out of the share.'
+- version: '3.0'
+  date: '2026-10-12'
+  changes:
+  - First version published with weights and formulas. Earlier versions 1 and 2 (September 2026) were used only to test the
+    method on pilot data and were never shown on the site.
+  - One shape for every count (log_cap, diminishing returns) and one formula for every penalty, so the same event weighs the
+    same in every factor.
+  - Factors that need a match to public records (license, clean record, claims match) are not scored when there is no match,
+    instead of getting an assumed value.
+  - 'How sure we are about the license match moves from the license factor into confidence: a weak match on our side no longer
+    lowers the business''s result.'
+  - 'License class counts: a statewide certified license 1.0, a locally registered license 0.7.'
+  - Claims seen only on the website (qualifications, guarantee, availability) are capped at 0.6.
+  - Permit volume is capped at the 75th percentile of the city, so size alone cannot win.
+  - In Florida, customer protection (insurance, bond, workers' comp) is shown as claimed and does not count, because the state
+    has no public insurance register.
+  - A Top tier and rank numbers appear only when the data in a city actually separates companies (discrimination test).
